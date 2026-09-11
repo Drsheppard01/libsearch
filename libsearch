@@ -7,9 +7,9 @@ detect_distro() {
 	if [ -f /etc/os-release ]; then
 		. /etc/os-release
 		echo "$ID"
-	elif [ -f /etc/lsb-release ]; then
-		. /etc/lsb-release
-		echo "$DISTRIB_ID" | tr '[:upper:]' '[:lower:]'
+	elif [ -f /etc/os-release ]; then
+		. /etc/os-release
+		echo "$ID_LIKE" | cut -d' ' -f1
 	else
 		echo "unknown"
 	fi
@@ -43,7 +43,7 @@ su_cmd=$(get_su) || su_cmd=""
 printf "Detected distro: %s\n\n" "$distro"
 
 case "$distro" in
-	fedora|rhel|centos|almalinux|rockylinux|nobara)
+	fedora|rhel|centos)
 		if ! command -v dnf >/dev/null 2>&1; then
 			printf "=== DNF (Fedora/RHEL) ===\n"
 			printf "dnf is required. Install it with:\n"
