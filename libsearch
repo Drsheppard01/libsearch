@@ -1,0 +1,151 @@
+#!/bin/sh -u
+
+# Copyright (c) DrSheppard01
+# SPDX-License-Identifier: WTFPL
+
+detect_distro() {
+	if [ -f /etc/os-release ]; then
+		. /etc/os-release
+		echo "$ID"
+	elif [ -f /etc/lsb-release ]; then
+		. /etc/lsb-release
+		echo "$DISTRIB_ID" | tr '[:upper:]' '[:lower:]'
+	else
+		echo "unknown"
+	fi
+}
+
+get_su() {
+	if command -v sudo >/dev/null 2>&1; then
+		echo "sudo"
+	elif command -v doas >/dev/null 2>&1; then
+		echo "doas"
+	else
+		return 1
+	fi
+}
+
+if [ ! -f libraries.txt ]; then
+	printf "Error: libraries.txt not found\n" >&2
+	exit 1
+fi
+
+libraries=$(cat libraries.txt)
+
+if [ -z "$libraries" ]; then
+	printf "Error: libraries.txt is empty\n" >&2
+	exit 1
+fi
+
+distro=$(detect_distro)
+su_cmd=$(get_su) || su_cmd=""
+
+printf "Detected distro: %s\n\n" "$distro"
+
+case "$distro" in
+	fedora|rhel|centos|almalinux|rockylinux|nobara)
+		if ! command -v dnf >/dev/null 2>&1; then
+			printf "=== DNF (Fedora/RHEL) ===\n"
+			printf "dnf is required. Install it with:\n"
+			if [ -n "$su_cmd" ]; then
+				printf "  %s dnf install dnf-plugins-core\n\n" "$su_cmd"
+				if ! $su_cmd dnf install -y dnf-plugins-core; then
+					printf "Error: Failed to install dnf-plugins-core\n" >&2
+					exit 1
+				fi
+			else
+				printf "  sudo dnf install dnf-plugins-core\n"
+				printf "  or\n"
+				printf "  doas dnf install dnf-plugins-core\n\n"
+				exit 1
+			fi
+		fi
+		printf "=== DNF (Fedora/RHEL) ===\n"
+		dnf provides "$libraries"
+		;;
+
+	debian|ubuntu|linuxmint|pop)
+		if ! command -v apt-file >/dev/null 2>&1; then
+			printf "=== APT-FILE (Debian/Ubuntu) ===\n"
+			printf "apt-file is required. Install it with:\n"
+			if [ -n "$su_cmd" ]; then
+				printf "  %s apt update && %s apt install -y apt-file && %s apt-file update\n\n" "$su_cmd" "$su_cmd" "$su_cmd"
+				if ! $su_cmd apt update; then
+					printf "Error: Failed to update package list\n" >&2
+					exit 1
+				fi
+				if ! $su_cmd apt install -y apt-file; then
+					printf "Error: Failed to install apt-file\n" >&2
+					exit 1
+				fi
+				if ! $su_cmd apt-file update; then
+					printf "Error: Failed to update apt-file database\n" >&2
+					exit 1
+				fi
+			else
+				printf "  sudo apt update && sudo apt install -y apt-file && sudo apt-file update\n"
+				printf "  or\n"
+				printf "  doas apt update && doas apt install -y apt-file && doas apt-file update\n\n"
+				exit 1
+			fi
+		fi
+		printf "=== APT-FILE (Debian/Ubuntu) ===\n"
+		apt-file search "$libraries"
+		;;
+
+	arch|cachyos|manjaro|endeavouros)
+		if ! command -v pkgfile >/dev/null 2>&1; then
+			printf "=== PKGFILE (Arch Linux) ===\n"
+			printf "pkgfile is required. Install it with:\n"
+			if [ -n "$su_cmd" ]; then
+				printf "  %s pacman -S --noconfirm pkgfile && %s pkgfile --update\n\n" "$su_cmd" "$su_cmd"
+				if ! $su_cmd pacman -S --noconfirm pkgfile; then
+					printf "Error: Failed to install pkgfile\n" >&2
+					exit 1
+				fi
+				if ! $su_cmd pkgfile --update; then
+					printf "Error: Failed to update pkgfile database\n" >&2
+					exit 1
+				fi
+			else
+				printf "  sudo pacman -S --noconfirm pkgfile && sudo pkgfile --update\n"
+				printf "  or\n"
+				printf "  doas pacman -S --noconfirm pkgfile && doas pkgfile --update\n\n"
+				exit 1
+			fi
+		fi
+		printf "=== PKGFILE (Arch Linux) ===\n"
+		pkgfile "$libraries"
+		;;
+
+	alpine|chimeraos)
+		if ! command -v apk >/dev/null 2>&1; then
+			printf "=== APK (Alpine Linux) ===\n"
+			printf "Error: apk is not available on this system\n\n"
+			exit 1
+		fi
+		printf "=== APK (Alpine Linux) ===\n"
+		apk search --no-cache "$libraries"
+		;;
+
+	void)
+		if ! command -v xbps-query >/dev/null 2>&1; then
+			printf "=== XBPS (Void Linux) ===\n"
+			printf "Error: xbps-query is not available on this system\n\n"
+			exit 1
+		fi
+		printf "=== XBPS (Void Linux) ===\n"
+		xbps-query -Rs "$libraries"
+		;;
+
+	*)
+		printf "Error: Unknown or unsupported distro: %s\n\n" "$distro" >&2
+		printf "Supported distros:\n"
+		printf "  - Fedora/RHEL/CentOS/AlmaLinux/Rocky/Nobara (DNF)\n"
+		printf "  - Debian/Ubuntu/LinuxMint/PopOS (APT-FILE)\n"
+		printf "  - Arch/CachyOS/Manjaro/EndeavourOS (PKGFILE)\n"
+		printf "  - Alpine (APK)\n"
+		printf "  - Void (XBPS)\n"
+		exit 1
+		;;
+esac
