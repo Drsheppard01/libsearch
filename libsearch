@@ -64,7 +64,7 @@ case "$distro" in
 		dnf provides "$libraries"
 		;;
 
-	debian|ubuntu|linuxmint|pop)
+	debian|ubuntu)
 		if ! command -v apt-file >/dev/null 2>&1; then
 			printf "=== APT-FILE (Debian/Ubuntu) ===\n"
 			printf "apt-file is required. Install it with:\n"
@@ -93,7 +93,7 @@ case "$distro" in
 		apt-file search "$libraries"
 		;;
 
-	arch|cachyos|manjaro|endeavouros)
+	arch)
 		if ! command -v pkgfile >/dev/null 2>&1; then
 			printf "=== PKGFILE (Arch Linux) ===\n"
 			printf "pkgfile is required. Install it with:\n"
@@ -140,12 +140,12 @@ case "$distro" in
 
 	*)
 		printf "Error: Unknown or unsupported distro: %s\n\n" "$distro" >&2
-		printf "Supported distros:\n"
-		printf "  - Fedora/RHEL/CentOS/AlmaLinux/Rocky/Nobara (DNF)\n"
-		printf "  - Debian/Ubuntu/LinuxMint/PopOS (APT-FILE)\n"
-		printf "  - Arch/CachyOS/Manjaro/EndeavourOS (PKGFILE)\n"
-		printf "  - Alpine (APK)\n"
-		printf "  - Void (XBPS)\n"
+		printf "Supported tools:\n"
+		printf "  - DNF for Fedora, Centos-like\n"
+		printf "  - APT-FILE for Ubuntu, Debian-like\n"
+		printf "  - PKGFILE for Arch-like\n"
+		printf "  - APK for Alpine and Chimera\n"
+		printf "  - XBPS for Void-like\n"
 		exit 1
 		;;
 esac
